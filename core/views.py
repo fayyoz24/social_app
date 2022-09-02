@@ -6,12 +6,15 @@ from django.contrib.auth.models import User, auth
 from django.contrib.auth.decorators import login_required
 from .models import Profile, Post, LikePost, FollowersCount
 from itertools import chain
+import random
 # Create your views here.
 
 @login_required(login_url='signin')
 def index(request):
     user_object = User.objects.get(username=request.user.username)
     user_profile = Profile.objects.get(user=user_object)
+
+    # post_profile = Post.objects.get(user=user_object)
 
     user_following = FollowersCount.objects.filter(follower=request.user.username)
 
@@ -20,8 +23,34 @@ def index(request):
 
     feed_list = list(chain(*feed))
 
-    # posts = Post.objects.all()
-    return render(request, 'index.html', {'user_profile':user_profile, 'posts':feed_list})
+    # user suggestion
+
+    all_users = User.objects.all()
+    user_following_all = []
+
+    for user in user_following:
+        user_list = User.objects.get(username=user.user)
+        user_following_all.append(user_list)
+
+    new_suggestions_list = [x for x in list(all_users) if (x not in list(user_following_all))]
+    current_user = User.objects.filter(username=request.user.username)
+    final_suggestions_list = [x for x in list(new_suggestions_list) if (x not in list(current_user))]
+    random.shuffle(final_suggestions_list)
+
+    username_profile = []
+    username_profile_list = []
+
+    for users in final_suggestions_list:
+        username_profile.append(users.id)
+
+    for ids in username_profile:
+        profile_lists = Profile.objects.filter(id_user=ids)
+        username_profile_list.append(profile_lists)
+
+    suggestions_username_profile_list = list(chain(*username_profile_list))
+
+    return render(request, 'index.html', {'user_profile':user_profile, 'posts':feed_list, 
+                'suggestions_username_profile_list':suggestions_username_profile_list[:4]})
 
 @login_required(login_url='signin')
 def follow(request):
@@ -60,21 +89,33 @@ def settings(request):
 
     if request.method == 'POST':
 
-        # if user did nor upload an image
+        # if user did not upload an image
         if request.FILES.get('image') == 'None':
             image = user_profile.profileimg
             bio = request.POST['bio']
             location = request.POST['location']
+            name = request.POST['name']
+            surname = request.POST['surname']
+            phone_number = request.POST['phone_number']
 
             user_profile.profileimg = image
             user_profile.bio = bio
+            user_profile.name = name
+            user_profile.surname = surname
+            user_profile.phone_number = phone_number
             user_profile.location = location
             user_profile.save()
         elif request.FILES.get('image') != None:
             image = request.FILES.get('image')
             bio = request.POST['bio']
             location = request.POST['location']
+            name = request.POST['name']
+            surname = request.POST['surname']
+            phone_number = request.POST['phone_number']
 
+            user_profile.name = name
+            user_profile.surname = surname
+            user_profile.phone_number = phone_number
             user_profile.profileimg = image
             user_profile.bio = bio
             user_profile.location = location
